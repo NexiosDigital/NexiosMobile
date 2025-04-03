@@ -24,7 +24,7 @@ const AboutScreen = ({navigation}) => {
       <ScrollView style={styles.scrollView}>
         <View style={styles.header}>
           <Image
-            source={require('../assets/images/nexios-logo.png')}
+            source={require('../assets/nexios-logo.png')}
             style={styles.logo}
             resizeMode="contain"
           />

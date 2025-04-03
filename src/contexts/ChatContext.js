@@ -1,15 +1,15 @@
-import React, { createContext, useState, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
+import React, {createContext, useState, useEffect, useRef} from 'react';
+import {Platform} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { sendMessage, checkConnectionStatus } from '../services/chatService';
-import { API_URL } from '../constants/endpoints';
+import {sendMessage, checkConnectionStatus} from '../services/chatService';
+import {API_URL} from '../constants/endpoints';
 
 export const ChatContext = createContext();
 
-export const ChatProvider = ({ children }) => {
+export const ChatProvider = ({children}) => {
   // Estado para as mensagens
   const [messages, setMessages] = useState([]);
-  
+
   // Estado para a conexão WebSocket
   const [connectionStatus, setConnectionStatus] = useState('disconnected');
   const [isTyping, setIsTyping] = useState(false);
@@ -34,15 +34,21 @@ export const ChatProvider = ({ children }) => {
           // Adicionar mensagem de boas-vindas se não houver mensagens armazenadas
           const welcomeMessage = {
             role: 'assistant',
-            content: 'Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?',
-            timestamp: new Date().toISOString()
+            content:
+              'Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?',
+            timestamp: new Date().toISOString(),
           };
           setMessages([welcomeMessage]);
-          await AsyncStorage.setItem('chat_messages', JSON.stringify([welcomeMessage]));
+          await AsyncStorage.setItem(
+            'chat_messages',
+            JSON.stringify([welcomeMessage]),
+          );
         }
 
         // Carregar IDs de conversa
-        const storedConversationId = await AsyncStorage.getItem('conversation_id');
+        const storedConversationId = await AsyncStorage.getItem(
+          'conversation_id',
+        );
         if (storedConversationId) {
           setConversationId(storedConversationId);
         }
@@ -119,7 +125,7 @@ export const ChatProvider = ({ children }) => {
 
     // Converter a URL HTTP para WebSocket (ws:// ou wss://)
     const wsProtocol = API_URL.startsWith('https') ? 'wss' : 'ws';
-    const wsBaseUrl = API_URL.replace(/^https?:\\/\\//, `${wsProtocol}://`);
+    const wsBaseUrl = API_URL.replace(/^https?:\/\//, `${wsProtocol}://`);
 
     // Incluir ID da conversa como query param se disponível
     let wsUrl = `${wsBaseUrl}/ws/${clientId}`;
@@ -155,7 +161,7 @@ export const ChatProvider = ({ children }) => {
         }
       };
 
-      newSocket.onmessage = (event) => {
+      newSocket.onmessage = event => {
         console.log('Mensagem recebida via WebSocket:', event.data);
         try {
           const data = JSON.parse(event.data);
@@ -166,12 +172,12 @@ export const ChatProvider = ({ children }) => {
 
             // Verificar se já temos essa mensagem
             const messageExists = messages.some(
-              (msg) => msg.role === 'assistant' && msg.content === data.content
+              msg => msg.role === 'assistant' && msg.content === data.content,
             );
 
             if (!messageExists) {
               // Adicionar nova mensagem
-              setMessages((prev) => [
+              setMessages(prev => [
                 ...prev,
                 {
                   role: 'assistant',
@@ -197,7 +203,7 @@ export const ChatProvider = ({ children }) => {
             if (data.messages && data.messages.length > 0) {
               // Procurar a última mensagem do assistente
               const assistantMessages = data.messages.filter(
-                (msg) => msg.role === 'assistant'
+                msg => msg.role === 'assistant',
               );
 
               if (assistantMessages.length > 0) {
@@ -206,24 +212,26 @@ export const ChatProvider = ({ children }) => {
 
                 // Verificar se já temos essa mensagem
                 const messageExists = messages.some(
-                  (msg) =>
+                  msg =>
                     msg.role === 'assistant' &&
-                    msg.content === latestAssistantMsg.content
+                    msg.content === latestAssistantMsg.content,
                 );
 
                 if (!messageExists) {
                   console.log(
                     'Nova mensagem do histórico a ser exibida:',
-                    latestAssistantMsg.content
+                    latestAssistantMsg.content,
                   );
 
                   // Adicionar nova mensagem
-                  setMessages((prev) => [
+                  setMessages(prev => [
                     ...prev,
                     {
                       role: 'assistant',
                       content: latestAssistantMsg.content,
-                      timestamp: latestAssistantMsg.timestamp || new Date().toISOString(),
+                      timestamp:
+                        latestAssistantMsg.timestamp ||
+                        new Date().toISOString(),
                     },
                   ]);
                   setIsTyping(false);
@@ -236,16 +244,16 @@ export const ChatProvider = ({ children }) => {
         }
       };
 
-      newSocket.onclose = (event) => {
+      newSocket.onclose = event => {
         console.log('WebSocket desconectado:', event.code, event.reason);
-        setConnectionStatus((prev) => (prev === 'error' ? 'error' : 'offline'));
+        setConnectionStatus(prev => (prev === 'error' ? 'error' : 'offline'));
 
         // Tentar reconectar após alguns segundos se não foi fechado intencionalmente
         if (event.code !== 1000) {
           socketRetryCountRef.current += 1;
           const delay = Math.min(
             30000,
-            1000 * Math.pow(2, socketRetryCountRef.current)
+            1000 * Math.pow(2, socketRetryCountRef.current),
           ); // Exponential backoff até 30s
           console.log(`Tentando reconectar em ${delay / 1000} segundos...`);
 
@@ -256,7 +264,7 @@ export const ChatProvider = ({ children }) => {
         }
       };
 
-      newSocket.onerror = (error) => {
+      newSocket.onerror = error => {
         console.error('Erro no WebSocket:', error);
         setConnectionStatus('error');
       };
@@ -267,7 +275,7 @@ export const ChatProvider = ({ children }) => {
   };
 
   // Enviar mensagem
-  const handleSendMessage = async (messageText) => {
+  const handleSendMessage = async messageText => {
     if (!messageText.trim() || isTyping) return;
 
     const userMessage = {
@@ -277,21 +285,23 @@ export const ChatProvider = ({ children }) => {
     };
 
     // Atualizar UI com a mensagem do usuário
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setIsTyping(true);
 
     try {
       // Preparar o histórico de mensagens - últimas 10 mensagens para não sobrecarregar
-      const conversationHistory = messages
-        .slice(-10)
-        .map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-          timestamp: msg.timestamp || new Date().toISOString(),
-        }));
+      const conversationHistory = messages.slice(-10).map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp || new Date().toISOString(),
+      }));
 
       // Enviar a mensagem para o backend
-      const response = await sendMessage(messageText, conversationHistory, conversationId);
+      const response = await sendMessage(
+        messageText,
+        conversationHistory,
+        conversationId,
+      );
       console.log('Resposta recebida:', response);
 
       // Salvar o ID da conversa se fornecido
@@ -304,7 +314,7 @@ export const ChatProvider = ({ children }) => {
         console.log('Mensagem em processamento...');
 
         // Mostrar mensagem temporária de "processando"
-        setMessages((prev) => [
+        setMessages(prev => [
           ...prev,
           {
             role: 'assistant',
@@ -317,10 +327,10 @@ export const ChatProvider = ({ children }) => {
         // Se não for processamento assíncrono, mostrar resposta direta
         const timestamp = new Date().toISOString();
 
-        setMessages((prev) => {
+        setMessages(prev => {
           // Filtrar mensagens temporárias
           const filteredMessages = prev.filter(msg => !msg.isTemporary);
-          
+
           return [
             ...filteredMessages,
             {
@@ -330,7 +340,7 @@ export const ChatProvider = ({ children }) => {
             },
           ];
         });
-        
+
         setIsTyping(false);
       }
     } catch (error) {
@@ -344,12 +354,12 @@ export const ChatProvider = ({ children }) => {
         timestamp: new Date().toISOString(),
       };
 
-      setMessages((prev) => {
+      setMessages(prev => {
         // Remover mensagens temporárias
         const filteredMessages = prev.filter(msg => !msg.isTemporary);
         return [...filteredMessages, errorMessage];
       });
-      
+
       setIsTyping(false);
     }
   };
@@ -360,17 +370,21 @@ export const ChatProvider = ({ children }) => {
       // Manter apenas a mensagem de boas-vindas
       const welcomeMessage = {
         role: 'assistant',
-        content: 'Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?',
-        timestamp: new Date().toISOString()
+        content:
+          'Olá! Sou o assistente virtual da Nexios Digital. Como posso ajudar você hoje?',
+        timestamp: new Date().toISOString(),
       };
-      
+
       setMessages([welcomeMessage]);
-      await AsyncStorage.setItem('chat_messages', JSON.stringify([welcomeMessage]));
-      
+      await AsyncStorage.setItem(
+        'chat_messages',
+        JSON.stringify([welcomeMessage]),
+      );
+
       // Limpar ID da conversa
       setConversationId(null);
       await AsyncStorage.removeItem('conversation_id');
-      
+
       return true;
     } catch (error) {
       console.error('Erro ao limpar o chat:', error);
